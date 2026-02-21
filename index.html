@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Осколки · карьера</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Модный шумовой эффект -->
+    <div class="noise"></div>
+    
+    <!-- Градиентные круги для фона -->
+    <div class="gradient-sphere sphere-1"></div>
+    <div class="gradient-sphere sphere-2"></div>
+
+    <div class="app-container">
+        <!-- Шапка с праздником и замком -->
+        <div class="top-bar">
+            <div class="holiday-banner" id="holidayBanner">
+                <i class="fas fa-calendar-alt"></i>
+                <span id="holidayText">Загрузка...</span>
+            </div>
+            <button class="admin-lock" id="adminLockBtn" aria-label="Вход для администратора">
+                <i class="fas fa-lock"></i>
+            </button>
+        </div>
+
+        <!-- Форма входа в админку (скрыта) -->
+        <div class="admin-login-modal" id="adminLoginModal">
+            <div class="modal-content">
+                <h3><i class="fas fa-crown"></i> Вход для персонала</h3>
+                <input type="email" id="loginEmail" placeholder="Email" value="admin@admin">
+                <input type="password" id="loginPassword" placeholder="Пароль" value="admin@admin">
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="closeLoginModal">Отмена</button>
+                    <button class="btn-primary" id="loginBtn">Войти</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основной контент -->
+        <div class="content-wrapper">
+            <!-- Вкладки (видны только в админке) -->
+            <div class="tabs" id="adminTabs" style="display: none;">
+                <button class="tab-btn active" data-tab="formTab">📋 Заявка</button>
+                <button class="tab-btn" data-tab="adminTab">👑 Управление</button>
+            </div>
+
+            <!-- Вкладка с формой заявки -->
+            <div id="formTab" class="tab-content active">
+                <div class="card form-card">
+                    <h2><i class="fas fa-clipboard-list"></i> Оставить заявку</h2>
+                    <p class="subtitle">Заполните форму, и мы пригласим вас на собеседование</p>
+                    
+                    <div class="alert" id="formAlert" style="display: none;"></div>
+                    
+                    <form id="applicationForm">
+                        <div class="form-group">
+                            <label><i class="fas fa-user"></i> ФИО</label>
+                            <input type="text" id="fullName" placeholder="Иванов Иван Иванович" required>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-envelope"></i> Email</label>
+                                <input type="email" id="email" placeholder="ivan@example.com" required>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-phone"></i> Телефон</label>
+                                <input type="tel" id="phone" placeholder="+7 (999) 123-45-67" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-briefcase"></i> Желаемая должность</label>
+                            <select id="position" required>
+                                <option value="">Выберите должность</option>
+                                <option value="Обвальщик">Обвальщик</option>
+                                <option value="Фаршесоставитель">Фаршесоставитель</option>
+                                <option value="Термист">Термист</option>
+                                <option value="Упаковщик">Упаковщик</option>
+                                <option value="Коптильщик">Коптильщик</option>
+                                <option value="Технолог">Технолог</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn-submit">
+                            <i class="fas fa-paper-plane"></i> Отправить заявку
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Вкладка админки -->
+            <div id="adminTab" class="tab-content">
+                <div class="card admin-card">
+                    <div class="admin-header">
+                        <h2><i class="fas fa-chart-line"></i> Панель управления</h2>
+                        <button class="btn-logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Выйти</button>
+                    </div>
+
+                    <!-- Блок управления праздниками -->
+                    <div class="holiday-planner">
+                        <h3><i class="fas fa-gift"></i> Планировщик праздников</h3>
+                        
+                        <div class="alert" id="holidayAlert" style="display: none;"></div>
+                        
+                        <div class="holiday-form">
+                            <div class="form-group">
+                                <label>Название праздника</label>
+                                <input type="text" id="holidayName" placeholder="Например: День колбасы">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Дата</label>
+                                    <input type="date" id="holidayDate">
+                                </div>
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button class="btn-primary" id="addHolidayBtn">
+                                        <i class="fas fa-plus"></i> Добавить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="holidays-list">
+                            <h4>Запланированные праздники</h4>
+                            <div id="holidaysContainer">
+                                <!-- Список праздников будет здесь -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Блок с заявками -->
+                    <div class="applications-section">
+                        <h3><i class="fas fa-users"></i> Заявки на работу</h3>
+                        <div class="table-responsive">
+                            <table class="applications-table">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>ФИО</th>
+                                        <th>Email</th>
+                                        <th>Телефон</th>
+                                        <th>Должность</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="applicationsList">
+                                    <tr><td colspan="5" class="empty-message">Загрузка...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления праздника -->
+    <div class="modal" id="deleteConfirmModal">
+        <div class="modal-content">
+            <h3>Удалить праздник?</h3>
+            <p id="deleteHolidayName"></p>
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancelDeleteBtn">Отмена</button>
+                <button class="btn-danger" id="confirmDeleteBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

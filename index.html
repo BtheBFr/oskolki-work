@@ -9,50 +9,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Модный шумовой эффект -->
+    <!-- Шумовой эффект -->
     <div class="noise"></div>
     
-    <!-- Градиентные круги для фона -->
+    <!-- Градиентные круги -->
     <div class="gradient-sphere sphere-1"></div>
     <div class="gradient-sphere sphere-2"></div>
 
     <div class="app-container">
-        <!-- Шапка с праздником и замком -->
+        <!-- Верхняя панель -->
         <div class="top-bar">
             <div class="holiday-banner" id="holidayBanner">
                 <i class="fas fa-calendar-alt"></i>
                 <span id="holidayText">Загрузка...</span>
             </div>
-            <button class="admin-lock" id="adminLockBtn" aria-label="Вход для администратора">
-                <i class="fas fa-lock"></i>
-            </button>
-        </div>
-
-        <!-- Форма входа в админку (скрыта) -->
-        <div class="admin-login-modal" id="adminLoginModal">
-            <div class="modal-content">
-                <h3><i class="fas fa-crown"></i> Вход для персонала</h3>
-                <input type="email" id="loginEmail" placeholder="Email" value="admin@admin">
-                <input type="password" id="loginPassword" placeholder="Пароль" value="admin@admin">
-                <div class="modal-actions">
-                    <button class="btn-secondary" id="closeLoginModal">Отмена</button>
-                    <button class="btn-primary" id="loginBtn">Войти</button>
-                </div>
+            <div class="status-indicator" id="userStatus" style="display: none;">
+                <i class="fas fa-check-circle"></i>
+                <span id="userStatusText"></span>
             </div>
         </div>
 
         <!-- Основной контент -->
         <div class="content-wrapper">
-            <!-- Вкладки (видны только в админке) -->
+            <!-- Вкладки админки (скрыты) -->
             <div class="tabs" id="adminTabs" style="display: none;">
-                <button class="tab-btn active" data-tab="formTab">📋 Заявка</button>
-                <button class="tab-btn" data-tab="adminTab">👑 Управление</button>
+                <button class="tab-btn active" data-tab="formTab">📋 Заявки</button>
+                <button class="tab-btn" data-tab="adminTab">👑 Админка</button>
+                <button class="tab-btn" data-tab="statsTab">📊 Статистика</button>
+                <button class="tab-btn" data-tab="vacanciesTab">💼 Вакансии</button>
             </div>
 
-            <!-- Вкладка с формой заявки -->
+            <!-- Вкладка с формой -->
             <div id="formTab" class="tab-content active">
                 <div class="card form-card">
-                    <h2><i class="fas fa-clipboard-list"></i> Оставить заявку</h2>
+                    <h2><i class="fas fa-clipboard-list"></i> Работа на заводе "Осколки"</h2>
                     <p class="subtitle">Заполните форму, и мы пригласим вас на собеседование</p>
                     
                     <div class="alert" id="formAlert" style="display: none;"></div>
@@ -84,13 +74,26 @@
                                 <option value="Упаковщик">Упаковщик</option>
                                 <option value="Коптильщик">Коптильщик</option>
                                 <option value="Технолог">Технолог</option>
+                                <option value="Лаборант">Лаборант</option>
+                                <option value="Кладовщик">Кладовщик</option>
                             </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-ruble-sign"></i> Желаемая зарплата</label>
+                            <input type="number" id="salary" placeholder="60000" required min="20000" step="1000">
                         </div>
                         
                         <button type="submit" class="btn-submit">
                             <i class="fas fa-paper-plane"></i> Отправить заявку
                         </button>
                     </form>
+                    
+                    <!-- Актуальные вакансии для пользователей -->
+                    <div class="vacancies-preview">
+                        <h3><i class="fas fa-fire"></i> Горящие вакансии</h3>
+                        <div id="publicVacancies"></div>
+                    </div>
                 </div>
             </div>
 
@@ -102,7 +105,7 @@
                         <button class="btn-logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Выйти</button>
                     </div>
 
-                    <!-- Блок управления праздниками -->
+                    <!-- Планировщик праздников -->
                     <div class="holiday-planner">
                         <h3><i class="fas fa-gift"></i> Планировщик праздников</h3>
                         
@@ -129,15 +132,17 @@
 
                         <div class="holidays-list">
                             <h4>Запланированные праздники</h4>
-                            <div id="holidaysContainer">
-                                <!-- Список праздников будет здесь -->
-                            </div>
+                            <div id="holidaysContainer"></div>
                         </div>
                     </div>
 
-                    <!-- Блок с заявками -->
+                    <!-- Заявки -->
                     <div class="applications-section">
-                        <h3><i class="fas fa-users"></i> Заявки на работу</h3>
+                        <div class="section-header">
+                            <h3><i class="fas fa-users"></i> Заявки на работу</h3>
+                            <div class="new-apps-badge" id="newAppsBadge" style="display: none;">0</div>
+                        </div>
+                        
                         <div class="table-responsive">
                             <table class="applications-table">
                                 <thead>
@@ -147,20 +152,108 @@
                                         <th>Email</th>
                                         <th>Телефон</th>
                                         <th>Должность</th>
+                                        <th>Зарплата</th>
+                                        <th>Статус</th>
+                                        <th>Заметки</th>
+                                        <th>Рейтинг</th>
+                                        <th>Чат</th>
                                     </tr>
                                 </thead>
                                 <tbody id="applicationsList">
-                                    <tr><td colspan="5" class="empty-message">Загрузка...</td></tr>
+                                    <tr><td colspan="10" class="empty-message">Загрузка...</td></tr>
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- Экспорт данных -->
+                    <div class="export-section">
+                        <button class="btn-secondary" id="exportExcelBtn">
+                            <i class="fas fa-file-excel"></i> Экспорт в Excel
+                        </button>
+                        <button class="btn-secondary" id="exportCsvBtn">
+                            <i class="fas fa-file-csv"></i> Экспорт в CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка статистики -->
+            <div id="statsTab" class="tab-content">
+                <div class="card stats-card">
+                    <h2><i class="fas fa-chart-pie"></i> Статистика</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalApps">0</div>
+                            <div class="stat-label">Всего заявок</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="newApps">0</div>
+                            <div class="stat-label">Новых</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="approvedApps">0</div>
+                            <div class="stat-label">Одобрено</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="avgSalary">0</div>
+                            <div class="stat-label">Ср. зарплата</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>Популярные должности</h3>
+                        <div id="positionsChart" class="chart"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <h3>Динамика заявок</h3>
+                        <div id="timelineChart" class="chart"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка управления вакансиями -->
+            <div id="vacanciesTab" class="tab-content">
+                <div class="card vacancies-card">
+                    <h2><i class="fas fa-briefcase"></i> Управление вакансиями</h2>
+                    
+                    <div class="vacancy-form">
+                        <h3>Добавить вакансию</h3>
+                        <div class="form-group">
+                            <label>Название должности</label>
+                            <input type="text" id="vacancyTitle" placeholder="Обвальщик">
+                        </div>
+                        <div class="form-group">
+                            <label>Описание</label>
+                            <textarea id="vacancyDesc" rows="3" placeholder="Требования, условия..."></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Зарплата от</label>
+                                <input type="number" id="vacancySalaryMin" placeholder="60000">
+                            </div>
+                            <div class="form-group">
+                                <label>Зарплата до</label>
+                                <input type="number" id="vacancySalaryMax" placeholder="90000">
+                            </div>
+                        </div>
+                        <button class="btn-primary" id="addVacancyBtn">
+                            <i class="fas fa-plus"></i> Добавить вакансию
+                        </button>
+                    </div>
+
+                    <div class="vacancies-list">
+                        <h3>Активные вакансии</h3>
+                        <div id="adminVacanciesList"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно подтверждения удаления праздника -->
+    <!-- Модальное окно подтверждения -->
     <div class="modal" id="deleteConfirmModal">
         <div class="modal-content">
             <h3>Удалить праздник?</h3>

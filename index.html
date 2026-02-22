@@ -31,7 +31,7 @@
 
         <!-- Основной контент -->
         <div class="content-wrapper">
-            <!-- Вкладки админки (скрыты) -->
+            <!-- Вкладки админки -->
             <div class="tabs" id="adminTabs" style="display: none;">
                 <button class="tab-btn active" data-tab="formTab">📋 Заявки</button>
                 <button class="tab-btn" data-tab="adminTab">👑 Админка</button>
@@ -80,7 +80,7 @@
                         </div>
                         
                         <div class="form-group">
-                            <label><i class="fas fa-ruble-sign"></i> Желаемая зарплата</label>
+                            <label><i class="fas fa-ruble-sign"></i> Желаемая зарплата (₽)</label>
                             <input type="number" id="salary" placeholder="60000" required min="20000" step="1000">
                         </div>
                         
@@ -89,7 +89,7 @@
                         </button>
                     </form>
                     
-                    <!-- Актуальные вакансии для пользователей -->
+                    <!-- Актуальные вакансии -->
                     <div class="vacancies-preview">
                         <h3><i class="fas fa-fire"></i> Горящие вакансии</h3>
                         <div id="publicVacancies"></div>
@@ -165,16 +165,6 @@
                             </table>
                         </div>
                     </div>
-
-                    <!-- Экспорт данных -->
-                    <div class="export-section">
-                        <button class="btn-secondary" id="exportExcelBtn">
-                            <i class="fas fa-file-excel"></i> Экспорт в Excel
-                        </button>
-                        <button class="btn-secondary" id="exportCsvBtn">
-                            <i class="fas fa-file-csv"></i> Экспорт в CSV
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -208,13 +198,13 @@
                     </div>
 
                     <div class="chart-container">
-                        <h3>Динамика заявок</h3>
+                        <h3>Динамика заявок (7 дней)</h3>
                         <div id="timelineChart" class="chart"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Вкладка управления вакансиями -->
+            <!-- Вкладка вакансий -->
             <div id="vacanciesTab" class="tab-content">
                 <div class="card vacancies-card">
                     <h2><i class="fas fa-briefcase"></i> Управление вакансиями</h2>
@@ -253,14 +243,35 @@
         </div>
     </div>
 
-    <!-- Модальное окно подтверждения -->
-    <div class="modal" id="deleteConfirmModal">
+    <!-- Модальное окно входа -->
+    <div class="modal" id="loginModal" style="display: none;">
+        <div class="modal-content" style="max-width: 350px;">
+            <h3 style="margin-bottom: 20px; color: #c43a3a;">
+                <i class="fas fa-lock"></i> Вход для администратора
+            </h3>
+            <input type="email" id="loginEmail" placeholder="Email" value="admin@admin" 
+                   style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px;">
+            <input type="password" id="loginPassword" placeholder="Пароль" value="admin@admin" 
+                   style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px;">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-secondary" onclick="closeLoginModal()" style="flex: 1;">
+                    Отмена
+                </button>
+                <button class="btn-primary" onclick="handleLogin()" style="flex: 1;">
+                    Войти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления -->
+    <div class="modal" id="deleteConfirmModal" style="display: none;">
         <div class="modal-content">
             <h3>Удалить праздник?</h3>
             <p id="deleteHolidayName"></p>
             <div class="modal-actions">
-                <button class="btn-secondary" id="cancelDeleteBtn">Отмена</button>
-                <button class="btn-danger" id="confirmDeleteBtn">Удалить</button>
+                <button class="btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+                <button class="btn-danger" onclick="confirmDelete()">Удалить</button>
             </div>
         </div>
     </div>

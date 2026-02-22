@@ -241,6 +241,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Чат для пользователя -->
+        <div class="user-chat-button" id="userChatButton" style="display: none;" onclick="openUserChat()">
+            <i class="fas fa-comment"></i>
+            <span class="user-chat-badge" id="userChatBadge" style="display: none;">1</span>
+        </div>
+
+        <!-- Окно чата для пользователя -->
+        <div class="user-chat-window" id="userChatWindow">
+            <div class="user-chat-header">
+                <span>Чат с отделом кадров</span>
+                <button onclick="closeUserChat()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="user-chat-messages" id="userChatMessages"></div>
+            <div class="user-chat-input">
+                <input type="text" id="userChatInput" placeholder="Введите сообщение..." 
+                       onkeypress="if(event.key==='Enter') sendUserMessage()">
+                <button onclick="sendUserMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
 
     <!-- Модальное окно входа -->
@@ -260,18 +280,6 @@
                 <button class="btn-primary" onclick="handleLogin()" style="flex: 1;">
                     Войти
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно подтверждения удаления -->
-    <div class="modal" id="deleteConfirmModal" style="display: none;">
-        <div class="modal-content">
-            <h3>Удалить праздник?</h3>
-            <p id="deleteHolidayName"></p>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeDeleteModal()">Отмена</button>
-                <button class="btn-danger" onclick="confirmDelete()">Удалить</button>
             </div>
         </div>
     </div>

@@ -662,14 +662,16 @@ input:focus, select:focus, textarea:focus {
     display: flex;
     flex-direction: column;
     z-index: 1000;
-    transform: translateY(100%);
+    transform: translateY(20px);
     opacity: 0;
+    visibility: hidden;
     transition: all 0.3s ease;
 }
 
 .chat-window.active {
     transform: translateY(0);
     opacity: 1;
+    visibility: visible;
 }
 
 .chat-header {
@@ -808,6 +810,7 @@ input:focus, select:focus, textarea:focus {
     justify-content: center;
     gap: 20px;
     padding: 20px 0;
+    flex-wrap: wrap;
 }
 
 .bar-container {
@@ -831,6 +834,7 @@ input:focus, select:focus, textarea:focus {
     color: var(--text-secondary);
     text-align: center;
     max-width: 80px;
+    word-break: break-word;
 }
 
 /* Вакансии */
@@ -878,14 +882,6 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.9rem;
 }
 
-/* Экспорт */
-.export-section {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-    justify-content: flex-end;
-}
-
 /* Модальные окна */
 .modal {
     position: fixed;
@@ -895,14 +891,10 @@ input:focus, select:focus, textarea:focus {
     height: 100%;
     background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(5px);
-    display: none;
+    display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
-}
-
-.modal.active {
-    display: flex;
 }
 
 .modal-content {
@@ -974,10 +966,6 @@ input:focus, select:focus, textarea:focus {
         font-size: 1.8rem;
     }
 
-    .applications-table {
-        font-size: 0.85rem;
-    }
-
     .btn-chat {
         padding: 5px;
     }
@@ -1005,13 +993,5 @@ input:focus, select:focus, textarea:focus {
     .tab-btn {
         padding: 8px 16px;
         font-size: 0.85rem;
-    }
-
-    .export-section {
-        flex-direction: column;
-    }
-
-    .export-section button {
-        width: 100%;
     }
 }

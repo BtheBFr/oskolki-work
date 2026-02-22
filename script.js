@@ -7,10 +7,13 @@ let applications = [];
 let holidays = [];
 let vacancies = [];
 let chatMessages = {};
+let userChatMessages = [];
 let deleteTarget = null;
 let clickCount = 0;
 let clickTimer = null;
 let audioContext = null;
+let userEmail = null;
+let currentUserApp = null;
 let lastCheckTimestamp = Date.now();
 
 // Константы
@@ -18,71 +21,150 @@ const STORAGE_KEYS = {
     AUTH: 'oskolkiAuth',
     HOLIDAYS: 'oskolkiHolidays',
     VACANCIES: 'oskolkiVacancies',
-    CHAT: 'oskolkiChat'
+    CHAT: 'oskolkiChat',
+    USER_CHAT: 'oskolkiUserChat',
+    USER_EMAIL: 'userEmail',
+    LAST_APP: 'lastApplication'
+};
+
+// База зарплат по должностям
+const SALARY_RANGES = {
+    'Обвальщик': { min: 70000, max: 90000, avg: 80000 },
+    'Фаршесоставитель': { min: 65000, max: 85000, avg: 75000 },
+    'Термист': { min: 60000, max: 80000, avg: 70000 },
+    'Упаковщик': { min: 50000, max: 65000, avg: 57500 },
+    'Коптильщик': { min: 55000, max: 75000, avg: 65000 },
+    'Технолог': { min: 80000, max: 120000, avg: 100000 },
+    'Лаборант': { min: 45000, max: 60000, avg: 52500 },
+    'Кладовщик': { min: 50000, max: 70000, avg: 60000 }
 };
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Сайт Осколки загружается...');
+    console.log('🚀 Загрузка сайта...');
     
-    // Проверяем сохраненную авторизацию
-    checkStoredAuth();
-    
-    // Загружаем данные
-    await loadAllData();
+    // Сначала показываем кешированные данные
     loadLocalData();
+    updateHolidayBanner();
+    renderPublicVacancies();
+    updateAdminUI();
+    
+    // Показываем форму сразу
+    document.querySelector('.content-wrapper').style.opacity = '1';
+    
+    // Потом загружаем свежие данные
+    setTimeout(() => {
+        loadAllData().then(() => {
+            console.log('✅ Данные обновлены');
+            updateHolidayBanner();
+            renderPublicVacancies();
+            if (isAdmin) {
+                renderApplications();
+                renderHolidays();
+            }
+        });
+    }, 100);
+    
+    // Проверяем авторизацию
+    checkStoredAuth();
     
     // Настраиваем обработчики
     setupEventListeners();
     
-    // Обновляем интерфейс
-    updateAdminUI();
-    updateHolidayBanner();
-    renderPublicVacancies();
+    // Проверяем, есть ли у пользователя активная заявка
+    checkUserApplication();
     
-    // Запускаем проверку новых данных (каждые 10 секунд)
+    // Запускаем проверку новых данных для админа
     if (isAdmin) {
-        setInterval(checkForNewData, 10000);
+        setInterval(checkForNewData, 15000);
     }
     
-    console.log('✅ Сайт готов. Админ:', isAdmin);
+    // Запускаем проверку новых сообщений для пользователя
+    if (userEmail) {
+        setInterval(checkUserMessages, 10000);
+    }
 });
 
 // Проверка сохраненной авторизации
 function checkStoredAuth() {
     try {
         const savedAuth = localStorage.getItem(STORAGE_KEYS.AUTH);
-        if (savedAuth === 'true') {
-            console.log('🔓 Найдена сохраненная авторизация');
-            isAdmin = true;
-        } else {
-            console.log('🔒 Авторизация не найдена');
-            isAdmin = false;
-        }
+        isAdmin = savedAuth === 'true';
+        console.log('🔐 Админ:', isAdmin);
     } catch (e) {
-        console.error('Ошибка проверки авторизации:', e);
         isAdmin = false;
     }
 }
 
-// Загрузка всех данных
+// Загрузка локальных данных (быстро)
+function loadLocalData() {
+    try {
+        // Загружаем праздники
+        const savedHolidays = localStorage.getItem(STORAGE_KEYS.HOLIDAYS);
+        if (savedHolidays) {
+            holidays = JSON.parse(savedHolidays);
+        } else {
+            // Праздники по умолчанию
+            const today = new Date().toISOString().split('T')[0];
+            holidays = [
+                { id: '1', name: 'День колбасы', date: today, createdAt: new Date().toISOString() }
+            ];
+        }
+        
+        // Загружаем вакансии
+        const savedVacancies = localStorage.getItem(STORAGE_KEYS.VACANCIES);
+        if (savedVacancies) {
+            vacancies = JSON.parse(savedVacancies);
+        } else {
+            vacancies = [
+                { id: '1', title: 'Обвальщик', description: 'Опыт работы от 1 года, сменный график', salaryMin: 70000, salaryMax: 90000 },
+                { id: '2', title: 'Фаршесоставитель', description: 'Знание рецептур, работа с оборудованием', salaryMin: 65000, salaryMax: 85000 },
+                { id: '3', title: 'Упаковщик', description: 'Внимательность, работа на линии', salaryMin: 50000, salaryMax: 65000 }
+            ];
+        }
+        
+        // Загружаем email пользователя
+        userEmail = localStorage.getItem(STORAGE_KEYS.USER_EMAIL);
+        
+        // Загружаем сообщения чата
+        const savedChat = localStorage.getItem(STORAGE_KEYS.CHAT);
+        if (savedChat) {
+            chatMessages = JSON.parse(savedChat);
+        }
+        
+        // Загружаем пользовательский чат
+        const savedUserChat = localStorage.getItem(STORAGE_KEYS.USER_CHAT);
+        if (savedUserChat) {
+            userChatMessages = JSON.parse(savedUserChat);
+        }
+        
+        // Загружаем заявки
+        const savedApps = localStorage.getItem('oskolkiApplications');
+        if (savedApps) {
+            applications = JSON.parse(savedApps);
+        }
+    } catch (e) {
+        console.error('Ошибка загрузки локальных данных:', e);
+    }
+}
+
+// Загрузка данных с сервера (медленно, но актуально)
 async function loadAllData() {
     try {
+        // Загружаем праздники
+        const holResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Праздники&t=${Date.now()}`);
+        const holData = await holResponse.json();
+        if (holData && holData.data && holData.data.length > 0) {
+            holidays = holData.data;
+            localStorage.setItem(STORAGE_KEYS.HOLIDAYS, JSON.stringify(holidays));
+        }
+        
         // Загружаем заявки
         const appsResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Заявки&t=${Date.now()}`);
         const appsData = await appsResponse.json();
         if (appsData && appsData.data) {
             applications = appsData.data;
             localStorage.setItem('oskolkiApplications', JSON.stringify(applications));
-            console.log('📥 Загружено заявок:', applications.length);
-        }
-        
-        // Загружаем праздники
-        const holResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Праздники&t=${Date.now()}`);
-        const holData = await holResponse.json();
-        if (holData && holData.data) {
-            holidays = holData.data;
-            localStorage.setItem(STORAGE_KEYS.HOLIDAYS, JSON.stringify(holidays));
         }
         
         // Загружаем чат
@@ -102,52 +184,14 @@ async function loadAllData() {
         
         lastCheckTimestamp = Date.now();
     } catch (error) {
-        console.error('Ошибка загрузки из Google Sheets:', error);
-        loadLocalData();
-    }
-}
-
-// Загрузка локальных данных
-function loadLocalData() {
-    try {
-        const savedApps = localStorage.getItem('oskolkiApplications');
-        if (savedApps) {
-            applications = JSON.parse(savedApps);
-        }
-        
-        const savedHolidays = localStorage.getItem(STORAGE_KEYS.HOLIDAYS);
-        if (savedHolidays) {
-            holidays = JSON.parse(savedHolidays);
-        } else {
-            // Праздники по умолчанию
-            holidays = [
-                { id: '1', name: 'День колбасы', date: new Date().toISOString().split('T')[0] }
-            ];
-        }
-        
-        const savedVacancies = localStorage.getItem(STORAGE_KEYS.VACANCIES);
-        if (savedVacancies) {
-            vacancies = JSON.parse(savedVacancies);
-        } else {
-            vacancies = [
-                { id: '1', title: 'Обвальщик', description: 'Опыт работы от 1 года', salaryMin: 70000, salaryMax: 90000 },
-                { id: '2', title: 'Фаршесоставитель', description: 'Знание рецептур', salaryMin: 65000, salaryMax: 85000 }
-            ];
-        }
-        
-        const savedChat = localStorage.getItem(STORAGE_KEYS.CHAT);
-        if (savedChat) {
-            chatMessages = JSON.parse(savedChat);
-        }
-    } catch (e) {
-        console.error('Ошибка загрузки локальных данных:', e);
+        console.error('Ошибка загрузки с сервера:', error);
     }
 }
 
 // Сохранение в Google Sheets
 async function saveToSheet(sheetName, data) {
     try {
-        const response = await fetch(APPS_SCRIPT_URL, {
+        await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
             headers: {
@@ -183,28 +227,105 @@ async function saveToSheet(sheetName, data) {
     }
 }
 
-// Проверка новых данных
+// Проверка новых данных для админа
 async function checkForNewData() {
     if (!isAdmin) return;
     
     try {
-        const response = await fetch(`${APPS_SCRIPT_URL}?sheet=Заявки&t=${Date.now()}`);
-        const data = await response.json();
+        // Проверяем новые заявки
+        const appsResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Заявки&t=${Date.now()}`);
+        const appsData = await appsResponse.json();
         
-        if (data && data.data && data.data.length > applications.length) {
-            // Есть новые заявки!
+        if (appsData && appsData.data && appsData.data.length > applications.length) {
             playNotificationSound();
-            showAlert('📢 Новая заявка!', 'success');
+            showAdminAlert('📢 Новая заявка!', 'success');
             
-            applications = data.data;
+            applications = appsData.data;
             localStorage.setItem('oskolkiApplications', JSON.stringify(applications));
             
             if (document.getElementById('adminTab').classList.contains('active')) {
                 renderApplications();
             }
         }
+        
+        // Проверяем новые сообщения
+        const chatResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Чат&t=${Date.now()}`);
+        const chatData = await chatResponse.json();
+        
+        if (chatData && chatData.data) {
+            const oldCount = Object.values(chatMessages).flat().length;
+            const newMessages = chatData.data;
+            
+            if (newMessages.length > oldCount) {
+                playNotificationSound();
+                showAdminAlert('📩 Новое сообщение в чате!', 'success');
+                
+                chatMessages = {};
+                newMessages.forEach(msg => {
+                    if (!chatMessages[msg.applicationId]) {
+                        chatMessages[msg.applicationId] = [];
+                    }
+                    chatMessages[msg.applicationId].push(msg);
+                });
+                localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chatMessages));
+                
+                if (document.getElementById('adminTab').classList.contains('active')) {
+                    renderApplications();
+                }
+            }
+        }
     } catch (error) {
         console.error('Ошибка проверки новых данных:', error);
+    }
+}
+
+// Проверка новых сообщений для пользователя
+async function checkUserMessages() {
+    if (!userEmail) return;
+    
+    try {
+        const chatResponse = await fetch(`${APPS_SCRIPT_URL}?sheet=Чат&t=${Date.now()}`);
+        const chatData = await chatResponse.json();
+        
+        if (chatData && chatData.data) {
+            const userMessages = chatData.data.filter(m => 
+                m.applicationId === currentUserApp?.timestamp && m.sender === 'admin'
+            );
+            
+            if (userMessages.length > userChatMessages.length) {
+                playNotificationSound();
+                showUserNotification('📩 Новое сообщение от отдела кадров!');
+                
+                userChatMessages = userMessages;
+                localStorage.setItem(STORAGE_KEYS.USER_CHAT, JSON.stringify(userChatMessages));
+                
+                document.getElementById('userChatBadge').style.display = 'flex';
+                document.getElementById('userChatButton').style.display = 'flex';
+                
+                if (document.getElementById('userChatWindow').classList.contains('active')) {
+                    renderUserChat();
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка проверки сообщений:', error);
+    }
+}
+
+// Проверка активной заявки пользователя
+function checkUserApplication() {
+    if (!userEmail) return;
+    
+    const userApps = applications.filter(app => app.email === userEmail);
+    if (userApps.length > 0) {
+        currentUserApp = userApps[0];
+        document.getElementById('userChatButton').style.display = 'flex';
+        
+        // Загружаем историю чата
+        const savedChat = localStorage.getItem(STORAGE_KEYS.USER_CHAT);
+        if (savedChat) {
+            userChatMessages = JSON.parse(savedChat);
+        }
     }
 }
 
@@ -213,7 +334,6 @@ function setupEventListeners() {
     // Секретный вход (15 кликов)
     document.getElementById('holidayBanner').addEventListener('click', function() {
         clickCount++;
-        console.log('Кликов:', clickCount);
         
         if (clickTimer) clearTimeout(clickTimer);
         
@@ -222,18 +342,17 @@ function setupEventListeners() {
         }, 3000);
         
         if (clickCount >= 15) {
-            console.log('🎉 15 кликов! Показываем форму входа');
             clickCount = 0;
             document.getElementById('loginModal').style.display = 'flex';
         }
     });
     
-    // Выход
+    // Выход из админки
     document.getElementById('logoutBtn').addEventListener('click', function() {
         isAdmin = false;
         localStorage.removeItem(STORAGE_KEYS.AUTH);
         updateAdminUI();
-        showAlert('Вы вышли из админ-панели', 'success');
+        showAdminAlert('Вы вышли из админ-панели', 'success');
     });
     
     // Переключение вкладок
@@ -259,14 +378,31 @@ function setupEventListeners() {
         });
     });
     
+    // Умная подсказка зарплаты при выборе должности
+    document.getElementById('position').addEventListener('change', function() {
+        const position = this.value;
+        const salaryInput = document.getElementById('salary');
+        
+        if (position && SALARY_RANGES[position]) {
+            const range = SALARY_RANGES[position];
+            salaryInput.placeholder = `Средняя: ${range.avg.toLocaleString()} ₽ (${range.min.toLocaleString()}-${range.max.toLocaleString()})`;
+            salaryInput.style.opacity = '0.8';
+        } else {
+            salaryInput.placeholder = '60000';
+            salaryInput.style.opacity = '1';
+        }
+    });
+    
     // Отправка заявки
     document.getElementById('applicationForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         
+        const email = document.getElementById('email').value.trim();
+        
         const newApp = {
             timestamp: new Date().toISOString(),
             fullName: document.getElementById('fullName').value.trim(),
-            email: document.getElementById('email').value.trim(),
+            email: email,
             phone: document.getElementById('phone').value.trim(),
             position: document.getElementById('position').value,
             salary: document.getElementById('salary').value,
@@ -299,12 +435,21 @@ function setupEventListeners() {
         document.getElementById('position').value = '';
         document.getElementById('salary').value = '';
         
-        showAlert('✅ Спасибо! Заявка отправлена!', 'success');
+        showFormAlert('✅ Спасибо! Заявка отправлена!', 'success');
         playNotificationSound();
         
-        // Сохраняем email для проверки статуса
-        localStorage.setItem('userEmail', newApp.email);
-        localStorage.setItem('lastAppTime', Date.now().toString());
+        // Сохраняем email и показываем чат
+        userEmail = email;
+        currentUserApp = newApp;
+        localStorage.setItem(STORAGE_KEYS.USER_EMAIL, email);
+        localStorage.setItem(STORAGE_KEYS.LAST_APP, JSON.stringify(newApp));
+        
+        document.getElementById('userChatButton').style.display = 'flex';
+        
+        // Приветственное сообщение
+        setTimeout(() => {
+            openUserChat();
+        }, 1000);
         
         if (isAdmin) {
             renderApplications();
@@ -355,7 +500,7 @@ function setupEventListeners() {
         const max = document.getElementById('vacancySalaryMax').value;
         
         if (!title || !desc || !min || !max) {
-            showAlert('Заполните все поля', 'error');
+            showAdminAlert('Заполните все поля', 'error');
             return;
         }
         
@@ -377,7 +522,14 @@ function setupEventListeners() {
         
         renderAdminVacancies();
         renderPublicVacancies();
-        showAlert('✅ Вакансия добавлена', 'success');
+        showAdminAlert('✅ Вакансия добавлена', 'success');
+    });
+    
+    // Закрытие модальных окон
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
     });
 }
 
@@ -401,29 +553,28 @@ function playNotificationSound() {
         
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (e) {
-        console.log('Аудио не поддерживается');
-    }
+    } catch (e) {}
 }
 
-// Обработка входа
+// Обработка входа админа
 window.handleLogin = function() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
     
     if (email === 'admin@admin' && password === 'admin@admin') {
-        console.log('✅ Успешный вход!');
-        
         isAdmin = true;
         localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
         
         closeLoginModal();
         updateAdminUI();
-        showAlert('🔓 Добро пожаловать, администратор!', 'success');
+        showAdminAlert('🔓 Добро пожаловать, администратор!', 'success');
         showEasterEgg();
         
         // Запускаем проверку новых данных
-        setInterval(checkForNewData, 10000);
+        setInterval(checkForNewData, 15000);
+        
+        // Загружаем свежие данные
+        loadAllData();
     } else {
         alert('❌ Неверный email или пароль');
     }
@@ -432,34 +583,6 @@ window.handleLogin = function() {
 // Закрыть модальное окно входа
 window.closeLoginModal = function() {
     document.getElementById('loginModal').style.display = 'none';
-};
-
-// Закрыть модальное окно удаления
-window.closeDeleteModal = function() {
-    document.getElementById('deleteConfirmModal').style.display = 'none';
-    deleteTarget = null;
-};
-
-// Подтверждение удаления
-window.confirmDelete = async function() {
-    if (deleteTarget) {
-        holidays = holidays.filter(h => h.id !== deleteTarget);
-        
-        // Удаляем из таблицы (отправляем специальный маркер)
-        await saveToSheet('Праздники', ['DELETE', deleteTarget]);
-        
-        renderHolidays();
-        updateHolidayBanner();
-        closeDeleteModal();
-        showHolidayAlert('Праздник удален', 'success');
-    }
-};
-
-// Показать подтверждение удаления
-window.showDeleteConfirm = function(id, name) {
-    document.getElementById('deleteHolidayName').textContent = name;
-    document.getElementById('deleteConfirmModal').style.display = 'flex';
-    deleteTarget = id;
 };
 
 // Пасхалка
@@ -488,7 +611,7 @@ function showEasterEgg() {
 }
 
 // Уведомления
-function showAlert(message, type) {
+function showFormAlert(message, type) {
     const alert = document.getElementById('formAlert');
     if (alert) {
         alert.textContent = message;
@@ -496,6 +619,22 @@ function showAlert(message, type) {
         alert.style.display = 'flex';
         setTimeout(() => alert.style.display = 'none', 5000);
     }
+}
+
+function showAdminAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert ${type}`;
+    alert.textContent = message;
+    alert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        max-width: 300px;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(alert);
+    setTimeout(() => alert.remove(), 5000);
 }
 
 function showHolidayAlert(message, type) {
@@ -506,6 +645,22 @@ function showHolidayAlert(message, type) {
         alert.style.display = 'flex';
         setTimeout(() => alert.style.display = 'none', 3000);
     }
+}
+
+function showUserNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'alert success';
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        z-index: 10000;
+        max-width: 300px;
+        animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => notification.remove(), 5000);
 }
 
 // Обновление интерфейса админа
@@ -574,7 +729,7 @@ function updateHolidayBanner() {
     }
 }
 
-// Отрисовка заявок
+// Отрисовка заявок в админке
 function renderApplications() {
     const tbody = document.getElementById('applicationsList');
     if (!tbody) return;
@@ -616,7 +771,7 @@ function renderApplications() {
                     </select>
                 </td>
                 <td>
-                    <button class="btn-chat" onclick="openChat('${app.timestamp}', '${app.fullName || ''}')">
+                    <button class="btn-chat" onclick="openAdminChat('${app.timestamp}', '${app.fullName || ''}')">
                         💬
                         ${chatMessages[app.timestamp] ? 
                           `<span class="chat-badge">${chatMessages[app.timestamp].filter(m => m.sender === 'user').length}</span>` 
@@ -640,7 +795,7 @@ function renderApplications() {
     }
 }
 
-// Отрисовка праздников
+// Отрисовка праздников в админке
 function renderHolidays() {
     const container = document.getElementById('holidaysContainer');
     const today = new Date().toISOString().split('T')[0];
@@ -672,7 +827,7 @@ function renderHolidays() {
                     </span>
                     ${isToday ? '<span class="today-badge">СЕГОДНЯ</span>' : ''}
                 </div>
-                <button class="delete-holiday" onclick="showDeleteConfirm('${holiday.id}', '${holiday.name}')">
+                <button class="delete-holiday" onclick="deleteHoliday('${holiday.id}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -680,57 +835,33 @@ function renderHolidays() {
     }).join('');
 }
 
-// Отрисовка публичных вакансий
-function renderPublicVacancies() {
-    const container = document.getElementById('publicVacancies');
-    if (!container) return;
+// Удаление праздника
+window.deleteHoliday = async function(id) {
+    if (!confirm('Удалить праздник?')) return;
     
-    if (vacancies.length === 0) {
-        container.innerHTML = '<p class="empty-message">Скоро появятся новые вакансии</p>';
-        return;
-    }
+    holidays = holidays.filter(h => h.id !== id);
     
-    container.innerHTML = vacancies.map(vac => `
-        <div class="vacancy-card">
-            <div class="vacancy-title">${vac.title}</div>
-            <div class="vacancy-desc">${vac.description}</div>
-            <div class="vacancy-salary">${vac.salaryMin.toLocaleString()} - ${vac.salaryMax.toLocaleString()} ₽</div>
-        </div>
-    `).join('');
-}
-
-// Отрисовка вакансий в админке
-function renderAdminVacancies() {
-    const container = document.getElementById('adminVacanciesList');
-    if (!container) return;
+    // Отправляем запрос на удаление
+    await saveToSheet('Праздники', ['DELETE', id]);
     
-    if (vacancies.length === 0) {
-        container.innerHTML = '<p class="empty-message">Нет активных вакансий</p>';
-        return;
-    }
-    
-    container.innerHTML = vacancies.map(vac => `
-        <div class="vacancy-card">
-            <div class="vacancy-title">${vac.title}</div>
-            <div class="vacancy-desc">${vac.description}</div>
-            <div class="vacancy-salary">${vac.salaryMin.toLocaleString()} - ${vac.salaryMax.toLocaleString()} ₽</div>
-            <div class="vacancy-actions">
-                <button class="btn-danger" onclick="deleteVacancy('${vac.id}')">Удалить</button>
-            </div>
-        </div>
-    `).join('');
-}
+    renderHolidays();
+    updateHolidayBanner();
+    showHolidayAlert('✅ Праздник удален', 'success');
+};
 
 // Удаление вакансии
 window.deleteVacancy = function(id) {
+    if (!confirm('Удалить вакансию?')) return;
+    
     vacancies = vacancies.filter(v => v.id !== id);
     localStorage.setItem(STORAGE_KEYS.VACANCIES, JSON.stringify(vacancies));
+    
     renderAdminVacancies();
     renderPublicVacancies();
-    showAlert('Вакансия удалена', 'success');
+    showAdminAlert('✅ Вакансия удалена', 'success');
 };
 
-// Обновление статуса
+// Обновление статуса заявки
 window.updateStatus = async function(timestamp, newStatus) {
     const appIndex = applications.findIndex(a => a.timestamp === timestamp);
     if (appIndex !== -1) {
@@ -750,10 +881,7 @@ window.updateStatus = async function(timestamp, newStatus) {
         ]);
         
         renderApplications();
-        
-        if (newStatus === 'одобрено') {
-            playNotificationSound();
-        }
+        playNotificationSound();
     }
 };
 
@@ -799,41 +927,83 @@ window.addRating = async function(timestamp, rating) {
     }
 };
 
-// Открыть чат
-window.openChat = function(applicationId, fullName) {
+// Отрисовка публичных вакансий
+function renderPublicVacancies() {
+    const container = document.getElementById('publicVacancies');
+    if (!container) return;
+    
+    if (vacancies.length === 0) {
+        container.innerHTML = '<p class="empty-message">Скоро появятся новые вакансии</p>';
+        return;
+    }
+    
+    container.innerHTML = vacancies.map(vac => `
+        <div class="vacancy-card">
+            <div class="vacancy-title">${vac.title}</div>
+            <div class="vacancy-desc">${vac.description}</div>
+            <div class="vacancy-salary">${vac.salaryMin.toLocaleString()} - ${vac.salaryMax.toLocaleString()} ₽</div>
+        </div>
+    `).join('');
+}
+
+// Отрисовка вакансий в админке
+function renderAdminVacancies() {
+    const container = document.getElementById('adminVacanciesList');
+    if (!container) return;
+    
+    if (vacancies.length === 0) {
+        container.innerHTML = '<p class="empty-message">Нет активных вакансий</p>';
+        return;
+    }
+    
+    container.innerHTML = vacancies.map(vac => `
+        <div class="vacancy-card">
+            <div class="vacancy-title">${vac.title}</div>
+            <div class="vacancy-desc">${vac.description}</div>
+            <div class="vacancy-salary">${vac.salaryMin.toLocaleString()} - ${vac.salaryMax.toLocaleString()} ₽</div>
+            <div class="vacancy-actions">
+                <button class="btn-danger" onclick="deleteVacancy('${vac.id}')">Удалить</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Открыть чат администратора
+window.openAdminChat = function(applicationId, fullName) {
     // Закрываем другие чаты
-    document.querySelectorAll('.chat-window').forEach(w => w.remove());
+    document.querySelectorAll('.admin-chat-window').forEach(w => w.remove());
     
     const chatWindow = document.createElement('div');
-    chatWindow.className = 'chat-window active';
-    chatWindow.id = `chat_${applicationId}`;
+    chatWindow.className = 'chat-window admin-chat-window active';
+    chatWindow.id = `adminChat_${applicationId}`;
     chatWindow.innerHTML = `
         <div class="chat-header">
             <span>Чат с ${fullName}</span>
-            <button onclick="closeChat('${applicationId}')">✕</button>
+            <button onclick="closeAdminChat('${applicationId}')">✕</button>
         </div>
-        <div class="chat-messages" id="chatMessages_${applicationId}"></div>
+        <div class="chat-messages" id="adminChatMessages_${applicationId}"></div>
         <div class="chat-input">
-            <input type="text" id="chatInput_${applicationId}" placeholder="Введите сообщение...">
-            <button onclick="sendChatMessage('${applicationId}')">➤</button>
+            <input type="text" id="adminChatInput_${applicationId}" placeholder="Введите сообщение..." 
+                   onkeypress="if(event.key==='Enter') sendAdminMessage('${applicationId}')">
+            <button onclick="sendAdminMessage('${applicationId}')">➤</button>
         </div>
     `;
     
     document.body.appendChild(chatWindow);
-    renderChat(applicationId);
+    renderAdminChat(applicationId);
 };
 
-// Закрыть чат
-window.closeChat = function(applicationId) {
-    const chatWindow = document.getElementById(`chat_${applicationId}`);
+// Закрыть чат администратора
+window.closeAdminChat = function(applicationId) {
+    const chatWindow = document.getElementById(`adminChat_${applicationId}`);
     if (chatWindow) {
         chatWindow.remove();
     }
 };
 
-// Отправка сообщения
-window.sendChatMessage = async function(applicationId) {
-    const input = document.getElementById(`chatInput_${applicationId}`);
+// Отправка сообщения от администратора
+window.sendAdminMessage = async function(applicationId) {
+    const input = document.getElementById(`adminChatInput_${applicationId}`);
     const text = input.value.trim();
     
     if (!text) return;
@@ -862,18 +1032,100 @@ window.sendChatMessage = async function(applicationId) {
     ]);
     
     input.value = '';
-    renderChat(applicationId);
+    renderAdminChat(applicationId);
+    playNotificationSound();
 };
 
-// Отрисовка чата
-function renderChat(applicationId) {
-    const container = document.getElementById(`chatMessages_${applicationId}`);
+// Отрисовка чата администратора
+function renderAdminChat(applicationId) {
+    const container = document.getElementById(`adminChatMessages_${applicationId}`);
     if (!container) return;
     
     const messages = chatMessages[applicationId] || [];
     
     container.innerHTML = messages.map(msg => `
         <div class="message ${msg.sender === 'admin' ? 'admin' : 'user'}">
+            <div class="message-text">${msg.text}</div>
+            <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+        </div>
+    `).join('');
+    
+    container.scrollTop = container.scrollHeight;
+}
+
+// Открыть чат пользователя
+window.openUserChat = function() {
+    document.getElementById('userChatWindow').classList.add('active');
+    document.getElementById('userChatBadge').style.display = 'none';
+    renderUserChat();
+};
+
+// Закрыть чат пользователя
+window.closeUserChat = function() {
+    document.getElementById('userChatWindow').classList.remove('active');
+};
+
+// Отправка сообщения от пользователя
+window.sendUserMessage = async function() {
+    const input = document.getElementById('userChatInput');
+    const text = input.value.trim();
+    
+    if (!text || !currentUserApp) return;
+    
+    const newMessage = {
+        messageId: Date.now().toString(),
+        applicationId: currentUserApp.timestamp,
+        sender: 'user',
+        text: text,
+        timestamp: new Date().toISOString(),
+        isRead: false
+    };
+    
+    userChatMessages.push(newMessage);
+    
+    if (!chatMessages[currentUserApp.timestamp]) {
+        chatMessages[currentUserApp.timestamp] = [];
+    }
+    chatMessages[currentUserApp.timestamp].push(newMessage);
+    
+    await saveToSheet('Чат', [
+        newMessage.messageId,
+        newMessage.applicationId,
+        newMessage.sender,
+        newMessage.text,
+        newMessage.timestamp,
+        newMessage.isRead
+    ]);
+    
+    input.value = '';
+    renderUserChat();
+    playNotificationSound();
+    
+    // Уведомление админу
+    if (isAdmin) {
+        showAdminAlert('📩 Новое сообщение от пользователя!', 'success');
+        if (document.getElementById('adminTab').classList.contains('active')) {
+            renderApplications();
+        }
+    }
+};
+
+// Отрисовка чата пользователя
+function renderUserChat() {
+    const container = document.getElementById('userChatMessages');
+    if (!container) return;
+    
+    if (userChatMessages.length === 0) {
+        container.innerHTML = `
+            <div class="message system">
+                Здравствуйте! Задайте ваш вопрос, мы ответим в рабочее время.
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = userChatMessages.map(msg => `
+        <div class="message ${msg.sender === 'user' ? 'user' : 'admin'}">
             <div class="message-text">${msg.text}</div>
             <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString()}</div>
         </div>
